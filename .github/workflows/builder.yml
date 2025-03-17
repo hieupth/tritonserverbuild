@@ -1,4 +1,4 @@
-name: GPU Builder
+name: Builder
 
 on:
   workflow_dispatch:
@@ -6,7 +6,8 @@ on:
     branches:
       - 'main'
     paths:
-      - 'gpubuilder.dockerfile'
+      - '.github/workflows/builder.yml'
+      - 'builder.dockerfile'
 
 jobs:
   build:
@@ -48,8 +49,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          file: gpubuilder.dockerfile
+          file: builder.dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-gpubuilder
+          tags: ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-builder
           build-args: |
             BASE=nvcr.io/nvidia/tensorrt:${{matrix.version}}-py3

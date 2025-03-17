@@ -1,0 +1,52 @@
+name: CPU
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/cpu.yml"
+      - "src/cpu.sh"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ['24.12']
+    steps:
+      - 
+        name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+      - 
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Build image
+        uses: hieupth/docker-action@v3
+        with: 
+          shell: bash
+          username: ${{vars.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
+          image: hieupth/mamba
+          options: |
+            -v ./src/cpu.sh:/build.sh
+            -e TRITON_VERSION=${{matrix.version}}
+          run: |
+            apt-get update && apt-get upgrade -y
+            apt-get install -y git
+            bash /build.sh
+      -
+        name: Push image
+        run: |
+          docker tag tritonserver ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-cpuonly
+          docker push ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-cpuonly
