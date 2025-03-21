@@ -1,5 +1,5 @@
-# ORX
-Simple inference package for vision and language tasks includes useful utility functions.
+# Triton Server Build
+Triton Inference Server image built from source.
 ## License
 [Apache License 2.0](LICENSE)<br>
-Copyright &copy; [Hieu Pham](https://github.com/hieupth). All rights reserved.
+Copyright &copy; 2024 [Hieu Pham](https://github.com/hieupth). All rights reserved.
