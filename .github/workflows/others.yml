@@ -1,4 +1,4 @@
-name: CPU
+name: Other backends
 
 on:
   workflow_dispatch:
@@ -6,8 +6,7 @@ on:
     branches:
       - "main"
     paths:
-      - ".github/workflows/cpu.yml"
-      - "src/cpu.sh"
+      - ".github/workflows/others.yml"
 
 jobs:
   build:
@@ -15,6 +14,7 @@ jobs:
     strategy:
       matrix:
         version: ['24.12', '25.02']
+        backend: ['trtllm', 'vllm']
     steps:
       - 
         name: Free Disk Space (Ubuntu)
@@ -31,21 +31,14 @@ jobs:
         name: Checkout
         uses: actions/checkout@v4
       -
-        name: Build image
-        uses: hieupth/inside-container-action@main
-        with: 
-          shell: bash
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
           username: ${{vars.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
-          image: hieupth/mamba
-          options: |
-            -v ./src/cpu.sh:/build.sh
-            -e TRITON_VERSION=${{matrix.version}}
-          run: |
-            mamba install -y cmake psutil && mamba clean -ay
-            bash /build.sh
       -
-        name: Push image
+        name: Build and push image
         run: |
-          docker tag tritonserver ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-cpuonly
-          docker push ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-cpuonly
+          docker pull nvcr.io/nvidia/tritonserver:${{matrix.version}}-${{matrix.backend}}-python-py3
+          docker tag nvcr.io/nvidia/tritonserver:${{matrix.version}}-${{matrix.backend}}-python-py3 ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-${{matrix.backend}}
+          docker push ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-${{matrix.backend}}

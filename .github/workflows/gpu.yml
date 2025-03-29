@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ['24.12']
+        version: ['24.12', '25.02']
     steps:
       - 
         name: Free Disk Space (Ubuntu)
@@ -34,17 +34,28 @@ jobs:
         name: Checkout
         uses: actions/checkout@v4
       -
+        name: Build tensorrt image
+        uses: docker/build-push-action@v5
+        with:
+          file: tensorrt.dockerfile
+          push: false
+          tags: tritonserverbuild:tensorrt-${{matrix.version}}
+          build-args: |
+            BASE=nvcr.io/nvidia/tensorrt:${{matrix.version}}-py3
+      -
         name: Build image
         uses: hieupth/inside-container-action@main
         with: 
           shell: bash
           username: ${{vars.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
-          image: ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.version}}-gpubuilder
+          image: tritonserverbuild:tensorrt-${{matrix.version}}
           options: |
             -v ./src/gpu.sh:/build.sh
             -e TRITON_VERSION=${{matrix.version}}
-          run: bash /build.sh
+          run: |
+            mamba install -y cmake psutil && mamba clean -ay
+            bash /build.sh
       -
         name: Push image
         run: |
