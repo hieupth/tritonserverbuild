@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/build.yml"
+      - "buildscripts/*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        release: ['25.11']
+        variant: ['gpu', 'cpu', 'vllm']
+    steps:
+      - 
+        name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+      - 
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Create tag
+        run: |
+          if [ "${{matrix.variant}}" != "gpu" ]; then
+            echo "tag=-${{matrix.variant}}" >> $GITHUB_ENV
+          else
+            echo "tag= " >> $GITHUB_ENV
+          fi
+      -
+        name: Build image
+        uses: hieupth/inside-container-action@main
+        with: 
+          shell: bash
+          username: ${{vars.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
+          image: hieupth/namba:${{matrix.release}}
+          options: |
+            -v ./buildscripts:/buildscripts
+            -e NV_VERSION=${{matrix.release}}
+          run: |
+            /bin/bash /buildscripts/${{matrix.variant}}.sh
+      -
+        name: Push image
+        run: |
+          docker tag tritonserver ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.release}}${{env.tag}}
+          docker push ${{vars.DOCKERHUB_USERNAME}}/tritonserverbuild:${{matrix.release}}${{env.tag}}
