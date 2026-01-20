@@ -15,9 +15,13 @@ jobs:
     strategy:
       matrix:
         release: ['25.11']
-        variant: ['gpu', 'cpu', 'vllm']
+        backend: ['tensorrt', 'vllm', 'ort']
+        cpuonly: [false, true]
+        exclude:
+          - backend: tensorrt
+            cpuonly: true
     steps:
-      - 
+      -
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
@@ -28,21 +32,31 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
-      - 
+      -
         name: Checkout
         uses: actions/checkout@v4
       -
         name: Create tag
         run: |
-          if [ "${{matrix.variant}}" != "gpu" ]; then
-            echo "tag=-${{matrix.variant}}" >> $GITHUB_ENV
+          if [ "${{matrix.backend}}" != "default" ]; then
+            tag_suffix="-${{matrix.backend}}"
           else
+            tag_suffix=""
+          fi
+
+          if [ "${{matrix.cpuonly}}" = "true" ]; then
+            tag_suffix="${tag_suffix}-cpuonly"
+          fi
+
+          if [ -z "${tag_suffix}" ]; then
             echo "tag= " >> $GITHUB_ENV
+          else
+            echo "tag=${tag_suffix}" >> $GITHUB_ENV
           fi
       -
         name: Build image
         uses: hieupth/inside-container-action@main
-        with: 
+        with:
           shell: bash
           username: ${{vars.DOCKERHUB_USERNAME}}
           password: ${{secrets.DOCKERHUB_TOKEN}}
@@ -50,8 +64,10 @@ jobs:
           options: |
             -v ./buildscripts:/buildscripts
             -e NV_VERSION=${{matrix.release}}
+            -e BACKEND=${{matrix.backend}}
+            -e ENABLE_GPU=${{!matrix.cpuonly}}
           run: |
-            /bin/bash /buildscripts/${{matrix.variant}}.sh
+            /bin/bash /buildscripts/build.sh
       -
         name: Push image
         run: |
